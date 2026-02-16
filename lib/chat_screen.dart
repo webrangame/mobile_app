@@ -11,6 +11,7 @@ import 'reviews_screen.dart';
 import 'package:supermarket_rag_mobile/widgets/custom_widgets.dart';
 import 'package:supermarket_rag_mobile/widgets/voice_search_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialQuery;
@@ -288,6 +289,36 @@ class _ChatScreenState extends State<ChatScreen> {
           
           // Input Area
           _buildInputArea(),
+          
+          // Powered By
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: GestureDetector(
+              onTap: () async {
+                 final Uri url = Uri.parse('https://www.niyogen.com/');
+                 if (await canLaunchUrl(url)) {
+                   await launchUrl(url);
+                 }
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Powered by ",
+                    style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                  Text(
+                    "NiyoGen",
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFF4A6CF7), 
+                      fontSize: 12, 
+                      fontWeight: FontWeight.bold
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -365,7 +396,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
+class _ChatBubble extends StatefulWidget {
   final String content;
   final bool isUser;
   final List<dynamic>? metadata;
@@ -373,8 +404,151 @@ class _ChatBubble extends StatelessWidget {
   const _ChatBubble({required this.content, required this.isUser, this.metadata});
 
   @override
+  State<_ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<_ChatBubble> {
+  List<dynamic> _currentProducts = [];
+  String _activeSort = 'Default'; // Default, Cheapest
+  String _activeFilter = 'All'; // All, Coles, Woolworths
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.metadata != null) {
+      _currentProducts = List.from(widget.metadata!);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ChatBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.metadata != oldWidget.metadata) {
+      setState(() {
+         _currentProducts = List.from(widget.metadata!);
+         _activeSort = 'Default';
+         _activeFilter = 'All';
+      });
+    }
+  }
+
+  double _parsePrice(String priceStr) {
+    try {
+      // Remove '$', whitespace, and non-numeric chars except dot
+      String clean = priceStr.replaceAll(RegExp(r'[^\d.]'), '');
+      return double.parse(clean);
+    } catch (e) {
+      return 999999.0; // Push to bottom if invalid
+    }
+  }
+
+  void _sortCheapestFirst() {
+    setState(() {
+      _activeSort = 'Cheapest';
+      _currentProducts.sort((a, b) {
+        final double pA = _parsePrice(a['price'] ?? a['Price'] ?? '');
+        final double pB = _parsePrice(b['price'] ?? b['Price'] ?? '');
+        return pA.compareTo(pB);
+      });
+    });
+  }
+
+  void _filterByStore(String storeName) {
+    setState(() {
+      _activeFilter = storeName;
+      if (storeName == 'All') {
+        _currentProducts = List.from(widget.metadata!);
+      } else {
+        _currentProducts = widget.metadata!.where((p) {
+          final s = (p['store'] ?? p['shop_name'] ?? '').toString().toLowerCase();
+          return s.contains(storeName.toLowerCase());
+        }).toList();
+      }
+      // Re-apply sort if active
+      if (_activeSort == 'Cheapest') {
+        _currentProducts.sort((a, b) {
+          final double pA = _parsePrice(a['price'] ?? a['Price'] ?? '');
+          final double pB = _parsePrice(b['price'] ?? b['Price'] ?? '');
+          return pA.compareTo(pB);
+        });
+      }
+    });
+  }
+
+  void _showStoreFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text(
+                'Filter by Store',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            _buildFilterOption('All Stores', 'All'),
+            const Divider(height: 1),
+            _buildFilterOption('Coles', 'Coles'),
+            const Divider(height: 1),
+            _buildFilterOption('Woolworths', 'Woolworths'),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOption(String label, String value) {
+    final isSelected = _activeFilter == value;
+    return InkWell(
+      onTap: () {
+        _filterByStore(value);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? const Color(0xFF4A6CF7) : Colors.black87,
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF4A6CF7)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (isUser) {
+    if (widget.isUser) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Row(
@@ -397,7 +571,7 @@ class _ChatBubble extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  content,
+                  widget.content,
                   style: GoogleFonts.outfit(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w400),
                 ),
               ),
@@ -453,12 +627,12 @@ class _ChatBubble extends StatelessWidget {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _buildContentWithTables(context, content),
+                    children: _buildContentWithTables(context, widget.content),
                   ),
                 ),
-                if (metadata != null && metadata!.isNotEmpty) ...[
+                if (widget.metadata != null && widget.metadata!.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _ProductCarousel(products: metadata!),
+                  _ProductCarousel(products: _currentProducts), // Use filtered list
                   const SizedBox(height: 16),
                   const Text(
                     "Do you want to see only the cheapest options, or filter by store?",
@@ -467,9 +641,12 @@ class _ChatBubble extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _buildFilterButton("Cheapest first"),
+                      _buildFilterButton("Cheapest first", onTap: _sortCheapestFirst, isActive: _activeSort == 'Cheapest'),
                       const SizedBox(width: 8),
-                      _buildFilterButton("Filter by store"),
+                      _buildFilterButton("Filter by store", onTap: _showStoreFilterDialog, isActive: _activeFilter != 'All'),
+                      const SizedBox(width: 8),
+                      if (_activeSort != 'Default' || _activeFilter != 'All')
+                        _buildFilterButton("Reset", onTap: _resetFilters, isReset: true),
                     ],
                   ),
                 ],
@@ -481,17 +658,47 @@ class _ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterButton(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.outfit(color: const Color(0xFF1B1B25), fontSize: 13, fontWeight: FontWeight.w600),
+  void _resetFilters() {
+    setState(() {
+      _activeSort = 'Default';
+      _activeFilter = 'All';
+      _currentProducts = List.from(widget.metadata!);
+    });
+  }
+
+  Widget _buildFilterButton(String label, {required VoidCallback onTap, bool isActive = false, bool isReset = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isReset ? const Color(0xFFFEE2E2) : (isActive ? const Color(0xFFEFF6FF) : Colors.white),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isReset ? const Color(0xFFFECACA) : (isActive ? const Color(0xFF4A6CF7) : const Color(0xFFE5E7EB))
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: isReset ? const Color(0xFFDC2626) : (isActive ? const Color(0xFF4A6CF7) : const Color(0xFF1B1B25)), 
+                fontSize: 13, 
+                fontWeight: FontWeight.w600
+              ),
+            ),
+             if (isActive) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.check, size: 14, color: Color(0xFF4A6CF7)),
+            ],
+            if (isReset) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -593,6 +800,29 @@ class _ProductCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (products.isEmpty) {
+       return Container(
+        height: 100,
+        alignment: Alignment.center,
+        margin: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.filter_list_off, color: Colors.grey.shade400, size: 30),
+            const SizedBox(height: 8),
+            Text(
+              "No products match your filter",
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
     return SizedBox(
       height: 320,
       child: ListView.builder(
