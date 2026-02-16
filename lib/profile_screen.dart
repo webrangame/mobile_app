@@ -76,9 +76,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Stack(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 35,
-                        backgroundImage: AssetImage('assets/images/profile_avatar.png'),
+                        backgroundColor: const Color(0xFFF0F4FF),
+                        child: const Icon(Icons.person, size: 40, color: Color(0xFF4A6CF7)),
                       ),
                       Positioned(
                         right: 0,

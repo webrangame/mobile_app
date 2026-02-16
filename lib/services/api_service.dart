@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
@@ -27,19 +29,22 @@ class ApiService {
 
   Future<List<dynamic>> fetchReviews() async {
     try {
+      final url = '$_marketBaseUrl/api/reviews?agentId=$AGENT_ID&limit=50';
+      print('ApiService: Fetching reviews from $url');
       final response = await http.get(
-        Uri.parse('$_marketBaseUrl/api/reviews?agentId=$AGENT_ID&limit=50'),
+        Uri.parse(url),
         headers: {'Accept': 'application/json'},
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
         return data['reviews'] as List<dynamic>;
       } else {
-        throw Exception('Failed to load reviews (${response.statusCode})');
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
-       print('Error fetching reviews: $e');
+       print('ApiService Error (fetchReviews): $e');
+       if (e is http.ClientException) throw Exception('Network error. Please check your connection.');
        throw Exception('Error fetching reviews: $e');
     }
   }
@@ -55,8 +60,10 @@ class ApiService {
       
       if (userId == null) throw Exception('User ID is required.');
 
+      final url = '$_marketBaseUrl/api/reviews';
+      print('ApiService: Submitting review to $url');
       final response = await http.post(
-        Uri.parse('$_marketBaseUrl/api/reviews'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -67,26 +74,26 @@ class ApiService {
           'rating': rating,
           'comment': comment,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         final errorData = jsonDecode(utf8.decode(response.bodyBytes));
         throw Exception(errorData['error'] ?? 'Failed to submit review');
       }
     } catch (e) {
-       print('Error submitting review: $e');
+       print('ApiService Error (submitReview): $e');
        throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
   Future<dynamic> sendMessage(String text) async {
     try {
-      // Prioritize Email for better LiteLLM attribution, fallback to ID, then Default
       final userId = await _getBestUserId();
-      print('Sending message for user_id: $userId');
+      final url = '$_baseUrl/chat';
+      print('ApiService: Sending message to $url for user: $userId');
       
       final response = await http.post(
-        Uri.parse('$_baseUrl/chat'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -95,7 +102,7 @@ class ApiService {
           'text': text,
           'user_id': userId,
         }),
-      );
+      ).timeout(const Duration(seconds: 45)); // Slightly longer for RAG
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -104,7 +111,7 @@ class ApiService {
           'metadata': data['metadata'] ?? [],
         };
       } else {
-        String errorMsg = 'Server error (${response.statusCode})';
+        String errorMsg = 'Server Error (${response.statusCode})';
         try {
           final errorData = jsonDecode(utf8.decode(response.bodyBytes));
           if (errorData['detail'] != null) {
@@ -114,8 +121,14 @@ class ApiService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('ApiService Error: $e');
-      throw Exception('Error sending message: $e');
+      print('ApiService Error (sendMessage): $e');
+      if (e is SocketException || e.toString().contains('SocketException')) {
+        throw Exception('Cannot connect to server. Please check your internet.');
+      }
+      if (e is TimeoutException || e.toString().contains('TimeoutException')) {
+        throw Exception('Request timed out. The server might be busy.');
+      }
+      throw Exception('Connection error: ${e.toString().replaceAll('Exception: ', '')}');
     }
   }
 

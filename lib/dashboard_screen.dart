@@ -8,6 +8,7 @@ import 'services/auth_service.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'widgets/custom_widgets.dart';
+import 'widgets/voice_search_overlay.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -101,10 +102,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                     child: CircleAvatar(
-                      backgroundImage: const AssetImage('assets/images/profile_avatar.png'),
-                      onBackgroundImageError: (_, __) {},
-                      backgroundColor: Colors.grey.shade200,
-                      child: const Icon(Icons.person, color: Colors.grey),
+                      backgroundColor: const Color(0xFFF0F4FF),
+                      child: const Icon(Icons.person, color: Color(0xFF4A6CF7)),
                     ),
                   ),
                   Row(
@@ -208,6 +207,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             fontSize: 16,
                           ),
                           border: InputBorder.none,
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withValues(alpha: 0.8)),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                barrierColor: Colors.transparent,
+                                builder: (context) => VoiceSearchOverlay(
+                                  onResult: (text) {
+                                    setState(() {
+                                      _searchController.text = text;
+                                    });
+                                    _navigateToSearch();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                         ),
                         style: GoogleFonts.outfit(
                           fontSize: 16,
@@ -219,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     GestureDetector(
                       onTap: () => _navigateToSearch(),
                       child: Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFF4A6CF7),
                           borderRadius: BorderRadius.circular(14),

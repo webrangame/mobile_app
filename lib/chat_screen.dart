@@ -9,6 +9,7 @@ import 'services/auth_service.dart';
 import 'login_screen.dart';
 import 'reviews_screen.dart';
 import 'package:supermarket_rag_mobile/widgets/custom_widgets.dart';
+import 'package:supermarket_rag_mobile/widgets/voice_search_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -151,26 +152,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final result = await _apiService.sendMessage(userText);
-      setState(() {
-        _messages.add({
-          "role": "assistant", 
-          "content": result['response'],
-          "metadata": result['metadata']
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            "role": "assistant", 
+            "content": result['response'],
+            "metadata": result['metadata']
+          });
+          _isLoading = false;
         });
-      });
+      }
     } catch (e) {
-      setState(() {
-        _messages.add({
-          "role": "assistant", 
-          "content": "Error: ${e.toString().replaceAll('Exception: ', '')}",
-          "metadata": []
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            "role": "assistant", 
+            "content": "⚠️ ${e.toString().replaceAll('Exception: ', '')}",
+            "metadata": []
+          });
+          _isLoading = false;
         });
-      });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        _scrollToBottom();
+      }
     }
   }
 
@@ -317,6 +323,23 @@ class _ChatScreenState extends State<ChatScreen> {
                   hintText: "Ask me anything...",
                   hintStyle: GoogleFonts.outfit(color: const Color(0xFFAFAFAF), fontSize: 16),
                   border: InputBorder.none,
+                  suffixIcon: IconButton(
+                    icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withValues(alpha: 0.8)),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        barrierColor: Colors.transparent,
+                        builder: (context) => VoiceSearchOverlay(
+                          onResult: (text) {
+                            setState(() {
+                              _controller.text = text;
+                            });
+                            _sendMessage();
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 style: GoogleFonts.outfit(fontSize: 16, color: const Color(0xFF1B1B25)),
               ),
@@ -380,9 +403,10 @@ class _ChatBubble extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const CircleAvatar(
+            CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage('assets/images/profile_avatar.png'),
+              backgroundColor: const Color(0xFFE0E7FF),
+              child: const Icon(Icons.person, size: 20, color: Color(0xFF4A6CF7)),
             ),
           ],
         ),
@@ -570,7 +594,7 @@ class _ProductCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 310,
+      height: 320,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,
