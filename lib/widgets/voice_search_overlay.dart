@@ -113,7 +113,7 @@ class _VoiceSearchOverlayState extends State<VoiceSearchOverlay> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withValues(alpha: 0.6),
+      color: Colors.black.withOpacity(0.6),
       child: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -123,7 +123,7 @@ class _VoiceSearchOverlayState extends State<VoiceSearchOverlay> with SingleTick
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -160,7 +160,7 @@ class _VoiceSearchOverlayState extends State<VoiceSearchOverlay> with SingleTick
                         height: 100 + (20 * _pulseController.value),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF4A6CF7).withValues(alpha: 0.1 * (1 - _pulseController.value)),
+                          color: const Color(0xFF4A6CF7).withOpacity(0.1 * (1 - _pulseController.value)),
                         ),
                       );
                     },

@@ -41,7 +41,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(
               "1. Introduction",
-              "At Niyogen Market, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.",
+              "At Price Comparison AI, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.",
             ),
             _buildSection(
               "2. Information We Collect",

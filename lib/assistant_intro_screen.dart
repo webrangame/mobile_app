@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
+import 'store_items_screen.dart';
 
 class AssistantIntroScreen extends StatefulWidget {
   const AssistantIntroScreen({super.key});
@@ -11,6 +13,30 @@ class AssistantIntroScreen extends StatefulWidget {
 
 class _AssistantIntroScreenState extends State<AssistantIntroScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String _userName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final decoded = jsonDecode(userStr);
+        if (decoded is Map && mounted) {
+          setState(() {
+            _userName = decoded['name']?.toString() ?? 'User';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
+    }
+  }
 
   void _navigateToChat(BuildContext context) {
     if (_searchController.text.trim().isNotEmpty) {
@@ -89,8 +115,8 @@ class _AssistantIntroScreenState extends State<AssistantIntroScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Hello, Jake!",
+                     Text(
+                      "Hello, $_userName!",
                       style: TextStyle(
                         fontSize: 18,
                         color: Color(0xFF717171),
@@ -118,38 +144,30 @@ class _AssistantIntroScreenState extends State<AssistantIntroScreen> {
                     ),
                     const SizedBox(height: 32),
                     
-                    // Supermarket Grid
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.85,
+                     // Supermarket Grid
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
                       children: [
-                        _buildStoreCard(
-                          name: "Coles",
-                          subtitle: "Super Offers",
-                          color: const Color(0xFFDE2B20),
-                          logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Coles_logo.svg/1024px-Coles_logo.svg.png",
+                        SizedBox(
+                          width: (MediaQuery.of(context).size.width - 64) / 2,
+                          child: _buildStoreCard(
+                            name: "Coles",
+                            subtitle: "Super Offers",
+                            color: const Color(0xFFDE2B20),
+                            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Coles_logo.svg/1024px-Coles_logo.svg.png",
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreItemsScreen(shopName: 'Coles'))),
+                          ),
                         ),
-                        _buildStoreCard(
-                          name: "Woolworths",
-                          subtitle: "Fresh Deals",
-                          color: const Color(0xFF007A33),
-                          logo: "https://upload.wikimedia.org/wikipedia/en/thumb/3/30/Woolworths_Logo.svg/1200px-Woolworths_Logo.svg.png",
-                        ),
-                        _buildStoreCard(
-                          name: "Aldi",
-                          subtitle: "Special Buys",
-                          color: const Color(0xFF002366),
-                          logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/ALDI_logo.svg/1200px-ALDI_logo.svg.png",
-                        ),
-                        _buildStoreCard(
-                          name: "IGA",
-                          subtitle: "Local Low Prices",
-                          color: const Color(0xFFC4122E),
-                          logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/IGA_logo.svg/1200px-IGA_logo.svg.png",
+                        SizedBox(
+                          width: (MediaQuery.of(context).size.width - 64) / 2,
+                          child: _buildStoreCard(
+                            name: "Woolworths",
+                            subtitle: "Fresh Deals",
+                            color: const Color(0xFF007A33),
+                            logo: "https://upload.wikimedia.org/wikipedia/en/thumb/3/30/Woolworths_Logo.svg/1200px-Woolworths_Logo.svg.png",
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreItemsScreen(shopName: 'Woolworths'))),
+                          ),
                         ),
                       ],
                     ),
@@ -225,57 +243,62 @@ class _AssistantIntroScreenState extends State<AssistantIntroScreen> {
     required String subtitle,
     required Color color,
     required String logo,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Image.network(logo, width: 32, height: 32, errorBuilder: (_, __, ___) => Icon(Icons.store, color: color)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Color(0xFF717171), fontSize: 12),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F8FF),
-              borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        height: 180, // Fixed height for consistency
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Text(
-                  "View Catalogue",
-                  style: TextStyle(color: Color(0xFF2D58E1), fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, size: 14, color: Color(0xFF2D58E1)),
+                Image.network(logo, width: 32, height: 32, errorBuilder: (_, __, ___) => Icon(Icons.store, color: color)),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Color(0xFF717171), fontSize: 12),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F8FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "View Catalogue",
+                    style: TextStyle(color: Color(0xFF2D58E1), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right, size: 14, color: Color(0xFF2D58E1)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

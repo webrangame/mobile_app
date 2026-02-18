@@ -14,23 +14,46 @@ class StoreItemsScreen extends StatefulWidget {
 
 class _StoreItemsScreenState extends State<StoreItemsScreen> {
   final ApiService _apiService = ApiService();
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
+  bool _isMoreLoading = false;
   List<dynamic> _items = [];
   String _errorMessage = '';
+  int _offset = 0;
+  final int _limit = 20;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
     _fetchItems();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+        !_isMoreLoading &&
+        _hasMore) {
+      _fetchMoreItems();
+    }
   }
 
   Future<void> _fetchItems() async {
     try {
-      final items = await _apiService.getItemsByShop(widget.shopName);
+      _offset = 0;
+      final items = await _apiService.getItemsByShop(widget.shopName, limit: _limit, offset: _offset);
       if (mounted) {
         setState(() {
           _items = items;
           _isLoading = false;
+          _hasMore = items.length >= _limit;
+          _offset += items.length;
         });
       }
     } catch (e) {
@@ -39,6 +62,25 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _fetchMoreItems() async {
+    setState(() => _isMoreLoading = true);
+    try {
+      final items = await _apiService.getItemsByShop(widget.shopName, limit: _limit, offset: _offset);
+      if (mounted) {
+        setState(() {
+          _items.addAll(items);
+          _isMoreLoading = false;
+          _hasMore = items.length >= _limit;
+          _offset += items.length;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isMoreLoading = false);
       }
     }
   }
@@ -111,24 +153,28 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
                         style: GoogleFonts.outfit(color: const Color(0xFF717171)),
                       ),
                     )
-                  : RefreshIndicator(
-                      onRefresh: _fetchItems,
-                      color: const Color(0xFF4A6CF7),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(20),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.65,
+                    : RefreshIndicator(
+                        onRefresh: _fetchItems,
+                        color: const Color(0xFF4A6CF7),
+                        child: GridView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(20),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.65,
+                          ),
+                          itemCount: _items.length + (_isMoreLoading ? 2 : 0),
+                          itemBuilder: (context, index) {
+                            if (index >= _items.length) {
+                              return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                            }
+                            final item = _items[index];
+                            return _buildItemCard(item);
+                          },
                         ),
-                        itemCount: _items.length,
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
-                          return _buildItemCard(item);
-                        },
                       ),
-                    ),
     );
   }
 
@@ -168,6 +214,7 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
                     ? Image.network(
                         imageUrl,
                         fit: BoxFit.contain,
+                        cacheWidth: 300, // Optimize memory for thumbnails
                         errorBuilder: (context, error, stackTrace) => const Icon(
                           Icons.image_not_supported_outlined,
                           color: Color(0xFFBDBDBD),

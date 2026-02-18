@@ -20,13 +20,13 @@ class OnboardingScreen extends StatelessWidget {
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECF1F6),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.all(40.0),
                   child: Image.asset(
-                    'assets/images/onboarding.png',
+                    'assets/images/logo.png',
                     fit: BoxFit.contain,
                   ),
                 ),

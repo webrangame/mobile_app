@@ -185,7 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
+                      color: Colors.black.withOpacity(0.06),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -208,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           border: InputBorder.none,
                           suffixIcon: IconButton(
-                            icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withValues(alpha: 0.8)),
+                            icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withOpacity(0.8)),
                             onPressed: () {
                               showDialog(
                                 context: context,
@@ -259,40 +259,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
-                childAspectRatio: 0.75,
+              // Store Cards Row
+              Row(
                 children: [
-                  _buildStoreCard(
-                    'Coles',
-                    'Super Offers',
-                    'assets/images/coles_logo.png',
-                    const Color(0xFFE01A22),
-                    () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const StoreItemsScreen(shopName: 'Coles'),
-                        ),
-                      );
-                    },
+                   Expanded(
+                    child: _buildStoreCard(
+                      'Coles',
+                      'Super Offers',
+                      'assets/images/coles_logo.png',
+                      const Color(0xFFE01A22),
+                      () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StoreItemsScreen(shopName: 'Coles'),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  _buildStoreCard(
-                    'Woolworths',
-                    'Fresh Deals',
-                    'assets/images/woolworths_logo.png',
-                    const Color(0xFF008A00),
-                    () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const StoreItemsScreen(shopName: 'Woolworths'),
-                        ),
-                      );
-                    },
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: _buildStoreCard(
+                      'Woolworths',
+                      'Fresh Deals',
+                      'assets/images/woolworths_logo.png',
+                      const Color(0xFF008A00),
+                      () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StoreItemsScreen(shopName: 'Woolworths'),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -318,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.06),
+                color: accentColor.withOpacity(0.06),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
@@ -361,10 +360,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.05),
+                    color: accentColor.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: accentColor.withValues(alpha: 0.1),
+                      color: accentColor.withOpacity(0.1),
                       width: 1,
                     ),
                   ),
