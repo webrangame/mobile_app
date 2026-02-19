@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'chat_screen.dart'; // Navigate to ChatScreen
+import 'dashboard_screen.dart'; // Navigate to Dashboard
 
 class GoogleAuthWebView extends StatefulWidget {
   const GoogleAuthWebView({super.key});
@@ -82,7 +82,7 @@ class _GoogleAuthWebViewState extends State<GoogleAuthWebView> {
 
       if (mounted) {
          Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ChatScreen()),
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
           (route) => false,
         );
       }

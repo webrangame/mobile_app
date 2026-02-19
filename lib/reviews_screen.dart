@@ -434,7 +434,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
         border: Border.all(color: const Color(0xFFF3F3F3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

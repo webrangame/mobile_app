@@ -41,7 +41,7 @@ class TermsConditionsScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(
               "1. Acceptance of Terms",
-              "By accessing or using the Niyogen Market application, you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the service.",
+              "By accessing or using the Price Comparison AI application, you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the service.",
             ),
             _buildSection(
               "2. Use of Service",
@@ -61,7 +61,7 @@ class TermsConditionsScreen extends StatelessWidget {
             ),
             _buildSection(
               "6. Limitation of Liability",
-              "Niyogen Market and its affiliates shall not be liable for any indirect, incidental, special, or consequential damages resulting from the use or inability to use the service.",
+              "Price Comparison AI and its affiliates shall not be liable for any indirect, incidental, special, or consequential damages resulting from the use or inability to use the service.",
             ),
             _buildSection(
               "7. Changes to Terms",

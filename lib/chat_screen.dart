@@ -338,7 +338,7 @@ class _ChatScreenState extends State<ChatScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -355,7 +355,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   hintStyle: GoogleFonts.outfit(color: const Color(0xFFAFAFAF), fontSize: 16),
                   border: InputBorder.none,
                   suffixIcon: IconButton(
-                    icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withValues(alpha: 0.8)),
+                    icon: Icon(Icons.mic_rounded, color: const Color(0xFF4A6CF7).withOpacity(0.8)),
                     onPressed: () {
                       showDialog(
                         context: context,
@@ -619,7 +619,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                     border: Border.all(color: const Color(0xFFE5E7EB)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
+                        color: Colors.black.withOpacity(0.03),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -916,6 +916,7 @@ class _ProductCard extends StatelessWidget {
                     ? Image.network(
                         imageUrl,
                         fit: BoxFit.contain,
+                        cacheWidth: 400, // Optimize memory for carousel
                         errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
                       )
                     : const Center(child: Icon(Icons.fastfood, size: 40, color: Color(0xFFEEEEEE))),

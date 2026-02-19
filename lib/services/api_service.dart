@@ -132,10 +132,10 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getItemsByShop(String shopName) async {
+  Future<List<dynamic>> getItemsByShop(String shopName, {int limit = 20, int offset = 0}) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/items?shop_name=$shopName'),
+        Uri.parse('$_baseUrl/api/items?shop_name=$shopName&limit=$limit&offset=$offset'),
         headers: {
           'Accept': 'application/json',
         },
