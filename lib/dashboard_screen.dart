@@ -307,6 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildStoreCard(String name, String subtext, String logoAsset, Color accentColor, VoidCallback onTap) {
     return PremiumCard(
+      height: 320,
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: Column(

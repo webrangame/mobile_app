@@ -55,138 +55,16 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   }
 
   void _showAddReviewDialog() {
-    int localRating = 5;
-    final controller = TextEditingController();
-    bool isSubmitting = false;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            left: 24,
-            right: 24,
-            top: 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Write a Review',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B1B25),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Share your experience with Australia Price Comparison',
-                style: TextStyle(color: Color(0xFF717171), fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              // Star Selector
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    return IconButton(
-                      icon: Icon(
-                        index < localRating ? Icons.star_rounded : Icons.star_outline_rounded,
-                        color: Colors.amber,
-                        size: 40,
-                      ),
-                      onPressed: () {
-                        setModalState(() => localRating = index + 1);
-                      },
-                    );
-                  }),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: controller,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'What did you think of the agent?',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFF),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          if (controller.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please write a comment')),
-                            );
-                            return;
-                          }
-                          setModalState(() => isSubmitting = true);
-                          try {
-                            await _apiService.submitReview(
-                              rating: localRating,
-                              comment: controller.text.trim(),
-                            );
-                            if (mounted) {
-                              Navigator.pop(context);
-                              _loadReviews();
-                              _showSuccessDialog();
-                            }
-                          } catch (e) {
-                            setModalState(() => isSubmitting = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString()),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A6CF7),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: isSubmitting
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Submit Review',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => _AddReviewDialog(
+        apiService: _apiService,
+        onSuccess: () {
+          _loadReviews();
+          _showSuccessDialog();
+        },
       ),
     );
   }
@@ -542,6 +420,154 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AddReviewDialog extends StatefulWidget {
+  final ApiService apiService;
+  final VoidCallback onSuccess;
+
+  const _AddReviewDialog({required this.apiService, required this.onSuccess});
+
+  @override
+  State<_AddReviewDialog> createState() => _AddReviewDialogState();
+}
+
+class _AddReviewDialogState extends State<_AddReviewDialog> {
+  int _localRating = 5;
+  final TextEditingController _controller = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: 24,
+        right: 24,
+        top: 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Write a Review',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B1B25),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Share your experience with Australia Price Comparison',
+            style: TextStyle(color: Color(0xFF717171), fontSize: 14),
+          ),
+          const SizedBox(height: 20),
+          // Star Selector
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  icon: Icon(
+                    index < _localRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: Colors.amber,
+                    size: 40,
+                  ),
+                  onPressed: () {
+                    setState(() => _localRating = index + 1);
+                  },
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _controller,
+            maxLines: 4,
+            decoration: InputDecoration(
+              hintText: 'What did you think of the agent?',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFF),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () async {
+                      if (_controller.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please write a comment')),
+                        );
+                        return;
+                      }
+                      setState(() => _isSubmitting = true);
+                      try {
+                        await widget.apiService.submitReview(
+                          rating: _localRating,
+                          comment: _controller.text.trim(),
+                        );
+                        if (mounted) {
+                          Navigator.pop(context);
+                          widget.onSuccess();
+                        }
+                      } catch (e) {
+                        setState(() => _isSubmitting = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString()),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A6CF7),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Submit Review',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
