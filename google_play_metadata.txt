@@ -1,0 +1,22 @@
+App Title (Max 30 chars):
+DealMate AU - Price Compare
+
+Short Description (Max 80 chars):
+Compare Coles & Woolworths prices instantly. Find the best grocery deals!
+
+Full Description (Max 4000 chars):
+DealMate Australia is your ultimate supermarket price comparison assistant! Designed specifically for everyday Aussies, DealMate saves you time and money by letting you instantly compare grocery prices and weekly specials across Coles and Woolworths.
+
+Whether you're doing your weekly family shop or just hunting for a quick half-price bargain, DealMate's smart AI search engine does the hard work for you. We scan thousands of products and analyze the latest weekly catalogs so you never overpay again.
+
+Key Features:
+- Instant Price Comparison: Search any grocery item and immediately see its price side-by-side at Coles and Woolworths.
+- Discover Weekly Specials: We automatically extract and highlight the best deals from this week's digital catalogs.
+- Intelligent AI Search: Just type "half price snacks", "cheap milk", or "ice cream deals" and our AI will find exactly what you're looking for.
+- State-Based Pricing: Deals and catalogs are automatically tailored to your specific Australian state (e.g., NSW, VIC, QLD).
+- Clean & Fast: A snappy, beautiful interface that gives you the answers you need in seconds.
+- 100% Free: Built by Aussies, for Aussies, to help fight the cost of living.
+
+Stop flipping through endless paper catalogs or jumping between different supermarket apps. Download DealMate Australia today and become a smarter shopper!
+
+(Note: DealMate Australia is an independent comparison tool for educational purposes and is not affiliated with, endorsed, or sponsored by Coles Group or Woolworths Group.)

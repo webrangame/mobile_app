@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/api_service.dart';
@@ -22,6 +23,9 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
   int _offset = 0;
   final int _limit = 20;
   bool _hasMore = true;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -33,6 +37,8 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -47,7 +53,12 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
   Future<void> _fetchItems() async {
     try {
       _offset = 0;
-      final items = await _apiService.getItemsByShop(widget.shopName, limit: _limit, offset: _offset);
+      final items = await _apiService.getItemsByShop(
+        widget.shopName, 
+        search: _searchQuery,
+        limit: _limit, 
+        offset: _offset
+      );
       if (mounted) {
         setState(() {
           _items = items;
@@ -69,7 +80,12 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
   Future<void> _fetchMoreItems() async {
     setState(() => _isMoreLoading = true);
     try {
-      final items = await _apiService.getItemsByShop(widget.shopName, limit: _limit, offset: _offset);
+      final items = await _apiService.getItemsByShop(
+        widget.shopName, 
+        search: _searchQuery,
+        limit: _limit, 
+        offset: _offset
+      );
       if (mounted) {
         setState(() {
           _items.addAll(items);
@@ -103,6 +119,37 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
             color: const Color(0xFF1B1B25),
             fontWeight: FontWeight.bold,
             fontSize: 20,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 500), () {
+                  setState(() {
+                    _searchQuery = value;
+                    _isLoading = true;
+                  });
+                  _fetchItems();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search in ${widget.shopName}...",
+                hintStyle: GoogleFonts.outfit(color: const Color(0xFFBDBDBD), fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF4A6CF7), size: 20),
+                filled: true,
+                fillColor: const Color(0xFFF3F4F6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
           ),
         ),
       ),

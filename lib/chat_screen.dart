@@ -29,11 +29,15 @@ class _ChatScreenState extends State<ChatScreen> {
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   Map<String, dynamic>? _userData;
+  String? _sessionId;
+  List<dynamic> _history = [];
+  bool _isHistoryLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadHistory();
     
     // Welcome message
     _messages.add({
@@ -50,6 +54,52 @@ class _ChatScreenState extends State<ChatScreen> {
           _sendMessage();
         }
       });
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() => _isHistoryLoading = true);
+    final history = await _apiService.fetchChatHistory();
+    if (mounted) {
+      setState(() {
+        _history = history;
+        _isHistoryLoading = false;
+      });
+    }
+  }
+
+  Future<void> _startNewChat() async {
+    setState(() {
+      _messages.clear();
+      _sessionId = null;
+      _messages.add({
+        "role": "assistant",
+        "content": "Hello! I'm your Supermarket Assistant. Ask me about product prices or deals (e.g., 'price of milk in coles').",
+        "metadata": []
+      });
+    });
+    Navigator.of(context).pop(); // Close drawer
+  }
+
+  Future<void> _loadConversation(String sessionId) async {
+    setState(() {
+      _isLoading = true;
+      _messages.clear();
+      _sessionId = sessionId;
+    });
+    Navigator.of(context).pop(); // Close drawer
+
+    final messages = await _apiService.fetchChatMessages(sessionId);
+    if (mounted) {
+      setState(() {
+        _messages.addAll(messages.map((m) => {
+          "role": m["role"],
+          "content": m["content"],
+          "metadata": m["metadata"] ?? []
+        }));
+        _isLoading = false;
+      });
+      _scrollToBottom();
     }
   }
 
@@ -151,6 +201,12 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.trim().isEmpty) return;
 
     final userText = _controller.text;
+    
+    // Generate session ID if not exists
+    if (_sessionId == null) {
+      _sessionId = "session_${DateTime.now().millisecondsSinceEpoch}";
+    }
+
     setState(() {
       _messages.add({"role": "user", "content": userText, "metadata": []});
       _isLoading = true;
@@ -158,23 +214,48 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
     _scrollToBottom();
 
+    int? assistantMsgIndex;
+
     try {
-      final result = await _apiService.sendMessage(userText);
-      if (mounted) {
-        setState(() {
-          _messages.add({
-            "role": "assistant", 
-            "content": result['response'],
-            "metadata": result['metadata']
+      await for (final event in _apiService.sendMessageStream(userText, sessionId: _sessionId)) {
+        if (!mounted) break;
+
+        final type = event['type'];
+        if (type == 'chunk') {
+          final content = event['content'] ?? "";
+          setState(() {
+            if (assistantMsgIndex == null) {
+              _messages.add({
+                "role": "assistant",
+                "content": content,
+                "metadata": []
+              });
+              assistantMsgIndex = _messages.length - 1;
+              _isLoading = false; // Hide typing indicator
+            } else {
+              _messages[assistantMsgIndex!]['content'] += content;
+            }
           });
-          _isLoading = false;
-        });
+          _scrollToBottom();
+        } else if (type == 'done') {
+          setState(() {
+            if (assistantMsgIndex != null) {
+              _messages[assistantMsgIndex!]['content'] = event['response'];
+              _messages[assistantMsgIndex!]['metadata'] = event['metadata'];
+            }
+            _isLoading = false;
+          });
+          _scrollToBottom();
+          _loadHistory(); // Refresh history list
+        } else if (type == 'error') {
+          throw Exception(event['message']);
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _messages.add({
-            "role": "assistant", 
+            "role": "assistant",
             "content": "⚠️ ${e.toString().replaceAll('Exception: ', '')}",
             "metadata": []
           });
@@ -214,9 +295,11 @@ class _ChatScreenState extends State<ChatScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
         actions: [
           IconButton(
@@ -271,6 +354,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+      drawer: _buildHistoryDrawer(),
       body: Column(
         children: [
           // Chat Area
@@ -324,6 +408,119 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryDrawer() {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFF1F4F9))),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4A6CF7).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: Color(0xFF4A6CF7), size: 24),
+                ),
+                const SizedBox(width: 15),
+                Text(
+                  "NiyoGen Chat",
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1B1B25),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          ListTile(
+            onTap: _startNewChat,
+            leading: const Icon(Icons.add_rounded, color: Color(0xFF4A6CF7)),
+            title: Text(
+              "New Chat",
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF4A6CF7),
+              ),
+            ),
+          ),
+          
+          const Divider(height: 1),
+          
+          Expanded(
+            child: _isHistoryLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : _history.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history_rounded, color: Colors.grey.shade300, size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          "No history yet",
+                          style: GoogleFonts.outfit(color: Colors.grey.shade400),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    itemCount: _history.length,
+                    itemBuilder: (context, index) {
+                      final item = _history[index];
+                      final isSelected = item['session_id'] == _sessionId;
+                      return ListTile(
+                        onTap: () => _loadConversation(item['session_id']),
+                        leading: Icon(
+                          Icons.chat_bubble_outline_rounded, 
+                          size: 18, 
+                          color: isSelected ? const Color(0xFF4A6CF7) : Colors.grey.shade600
+                        ),
+                        title: Text(
+                          item['title'] ?? "Untitiled Chat",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            color: isSelected ? const Color(0xFF4A6CF7) : const Color(0xFF1B1B25),
+                          ),
+                        ),
+                        tileColor: isSelected ? const Color(0xFF4A6CF7).withOpacity(0.05) : null,
+                      );
+                    },
+                  ),
+          ),
+          
+          const Divider(height: 1),
+          
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListTile(
+              onTap: _handleLogout,
+              leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              title: Text(
+                "Logout",
+                style: GoogleFonts.outfit(color: Colors.redAccent, fontWeight: FontWeight.w500),
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,7 +19,7 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -41,6 +42,7 @@ class AuthService {
         throw Exception(errorData['error'] ?? 'Login failed');
       }
     } catch (e) {
+      if (e is TimeoutException) throw Exception('Login request timed out. Please try again.');
       throw Exception('Login error: $e');
     }
   }
@@ -56,13 +58,14 @@ class AuthService {
         body: jsonEncode({
           'email': email,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
         final errorData = jsonDecode(response.body);
         throw Exception(errorData['error'] ?? 'Forgot password request failed');
       }
     } catch (e) {
+      if (e is TimeoutException) throw Exception('Request timed out. Please try again.');
       throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
@@ -80,7 +83,7 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -103,6 +106,7 @@ class AuthService {
         throw Exception(errorData['error'] ?? 'Signup failed');
       }
     } catch (e) {
+      if (e is TimeoutException) throw Exception('Signup request timed out. Please try again.');
       throw Exception('Signup error: $e');
     }
   }

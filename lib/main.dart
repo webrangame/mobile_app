@@ -28,7 +28,7 @@ class SupermarketRagApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Price Comparison AI', // Updated Title
+      title: 'DealMate AI', // Updated Title
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
