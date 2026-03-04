@@ -27,6 +27,20 @@ class ApiService {
     return DEFAULT_USER_ID;
   }
 
+  Future<String?> _getBestUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString('user');
+      if (userJson != null) {
+        final Map<String, dynamic> userMap = jsonDecode(userJson);
+        return userMap['name']?.toString() ?? userMap['displayName']?.toString();
+      }
+    } catch (e) {
+      print('Error getting user name: $e');
+    }
+    return null;
+  }
+
   Future<List<dynamic>> fetchReviews() async {
     try {
       final url = '$_marketBaseUrl/api/reviews?agentId=$AGENT_ID&limit=50';
@@ -89,8 +103,9 @@ class ApiService {
   Future<dynamic> sendMessage(String text, {String? sessionId}) async {
     try {
       final userId = await _getBestUserId();
+      final userName = await _getBestUserName();
       final url = '$_baseUrl/chat';
-      print('ApiService: Sending message to $url for user: $userId, session: $sessionId');
+      print('ApiService: Sending message to $url for user: $userId ($userName), session: $sessionId');
       
       final response = await http.post(
         Uri.parse(url),
@@ -101,10 +116,11 @@ class ApiService {
         body: jsonEncode({
           'text': text,
           'user_id': userId,
+          'user_name': userName,
           'stream': false,
           'session_id': sessionId,
         }),
-      ).timeout(const Duration(seconds: 60)); // Long timeout for heavy RAG operations
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -134,11 +150,12 @@ class ApiService {
     }
   }
 
-  Stream<Map<String, dynamic>> sendMessageStream(String text, {String? sessionId}) async {
+  Stream<Map<String, dynamic>> sendMessageStream(String text, {String? sessionId}) async* {
     try {
       final userId = await _getBestUserId();
+      final userName = await _getBestUserName();
       final url = '$_baseUrl/chat';
-      print('ApiService: Opening stream to $url for user: $userId, session: $sessionId');
+      print('ApiService: Opening stream to $url for user: $userId ($userName), session: $sessionId');
 
       final request = http.Request('POST', Uri.parse(url));
       request.headers['Content-Type'] = 'application/json';
@@ -146,6 +163,7 @@ class ApiService {
       request.body = jsonEncode({
         'text': text,
         'user_id': userId,
+        'user_name': userName,
         'stream': true,
         'session_id': sessionId,
       });

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'services/api_service.dart';
 import 'widgets/custom_widgets.dart';
+import 'utils/user_utils.dart';
 
 class ReviewsScreen extends StatefulWidget {
   const ReviewsScreen({super.key});
@@ -300,8 +301,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
     } catch (_) {}
     
     final formattedDate = date != null ? DateFormat('MMM d, y').format(date) : 'N/A';
-    final userName = review['user_name']?.toString() ?? 'Anonymous';
-    final initial = userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
+    final userName = UserUtils.formatUserName(review['user_name']?.toString());
+    final initial = UserUtils.getInitials(userName);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

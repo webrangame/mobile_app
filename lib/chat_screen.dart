@@ -12,6 +12,7 @@ import 'package:supermarket_rag_mobile/widgets/custom_widgets.dart';
 import 'package:supermarket_rag_mobile/widgets/voice_search_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'utils/user_utils.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialQuery;
@@ -146,9 +147,9 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow(Icons.person_rounded, 'Name', _userData?['name'] ?? 'N/A'),
+            _buildInfoRow(Icons.person_rounded, 'Name', UserUtils.formatUserName(_userData?['name'])),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.email_rounded, 'Email', _userData?['email'] ?? 'N/A'),
+            _buildInfoRow(Icons.email_rounded, 'Email', UserUtils.formatEmail(_userData?['email'])),
             if (_userData?['role'] != null) ...[
               const SizedBox(height: 16),
               _buildInfoRow(Icons.badge_rounded, 'Role', _userData!['role'].toString().toUpperCase()),

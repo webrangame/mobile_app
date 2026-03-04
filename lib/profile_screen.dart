@@ -8,6 +8,7 @@ import 'reviews_screen.dart';
 import 'how_to_use_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'utils/user_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,8 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final decoded = jsonDecode(userStr);
         if (decoded is Map && mounted) {
           setState(() {
-            _userName = decoded['name']?.toString() ?? 'User';
-            _userEmail = decoded['email']?.toString() ?? '';
+            _userName = UserUtils.formatUserName(decoded['name']?.toString());
+            _userEmail = UserUtils.formatEmail(decoded['email']?.toString());
           });
         }
       }
