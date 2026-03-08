@@ -37,8 +37,8 @@ Whether you're comparing **Coles vs Woolworths**, hunting for weekly specials, o
 
 ---
 
-### 💡 Powered by NiyoGen AI
-DealMate uses advanced AI developed by **NiyoGen** — a Singapore-based AI technology company — so you always know you're getting the best deal.
+### 💡 Powered by Advanced AI
+DealMate uses advanced AI so you always know you're getting the best deal.
 
 ---
 

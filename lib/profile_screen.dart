@@ -77,34 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 35,
-                        backgroundColor: const Color(0xFFF0F4FF),
-                        child: const Icon(Icons.person, size: 40, color: Color(0xFF4A6CF7)),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.edit_outlined,
-                            size: 14,
-                            color: Color(0xFF1B1B25),
-                          ),
-                        ),
-                      ),
+                    CircleAvatar(
+                      radius: 35,
+                      backgroundColor: const Color(0xFFF0F4FF),
+                      child: const Icon(Icons.person, size: 40, color: Color(0xFF4A6CF7)),
+                    ),
                     ],
                   ),
                   const SizedBox(width: 16),
@@ -131,12 +108,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, color: Color(0xFF1B1B25)),
-                    onPressed: () {
-                      // TODO: Edit Profile
-                    },
                   ),
                 ],
               ),

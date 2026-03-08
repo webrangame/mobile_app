@@ -137,6 +137,11 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
                   _fetchItems();
                 });
               },
+              style: GoogleFonts.outfit(
+                color: const Color(0xFF1B1B25),
+                fontSize: 14,
+              ),
+              cursorColor: const Color(0xFF4A6CF7),
               decoration: InputDecoration(
                 hintText: "Search in ${widget.shopName}...",
                 hintStyle: GoogleFonts.outfit(color: const Color(0xFFBDBDBD), fontSize: 14),

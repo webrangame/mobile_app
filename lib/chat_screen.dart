@@ -13,10 +13,13 @@ import 'package:supermarket_rag_mobile/widgets/voice_search_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'utils/user_utils.dart';
+import 'dashboard_screen.dart';
+import 'history_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialQuery;
-  const ChatScreen({super.key, this.initialQuery});
+  final String? initialSessionId;
+  const ChatScreen({super.key, this.initialQuery, this.initialSessionId});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -40,21 +43,54 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadUserData();
     _loadHistory();
     
-    // Welcome message
-    _messages.add({
-      "role": "assistant",
-      "content": "Hello! I'm your Supermarket Assistant. Ask me about product prices or deals (e.g., 'price of milk in coles').",
-      "metadata": []
+    if (widget.initialSessionId != null) {
+      _sessionId = widget.initialSessionId;
+      _loadConversationWithoutPop(widget.initialSessionId!);
+    } else {
+      // Welcome message
+      _messages.add({
+        "role": "assistant",
+        "content": "Hello! I'm DealMate. Ask me about product prices or deals (e.g., 'price of milk in coles').",
+        "metadata": []
+      });
+
+      // Handle initial query from navigation (e.g. from Dashboard)
+      if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _controller.text = widget.initialQuery!;
+            _sendMessage();
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _loadConversationWithoutPop(String sessionId) async {
+    setState(() {
+      _isLoading = true;
+      _messages.clear();
     });
 
-    // Handle initial query from navigation (e.g. from Dashboard)
-    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _controller.text = widget.initialQuery!;
-          _sendMessage();
-        }
-      });
+    try {
+      final messages = await _apiService.fetchChatMessages(sessionId);
+      if (mounted) {
+        setState(() {
+          _messages.addAll(messages.map((m) => {
+            "role": m["role"],
+            "content": m["content"],
+            "metadata": m["metadata"] ?? []
+          }));
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -63,6 +99,12 @@ class _ChatScreenState extends State<ChatScreen> {
     final history = await _apiService.fetchChatHistory();
     if (mounted) {
       setState(() {
+        // Sort by date descending (newest first)
+        history.sort((a, b) {
+          DateTime dateA = DateTime.tryParse(a['last_message_at'] ?? a['created_at'] ?? a['updated_at'] ?? '') ?? DateTime(1970);
+          DateTime dateB = DateTime.tryParse(b['last_message_at'] ?? b['created_at'] ?? b['updated_at'] ?? '') ?? DateTime(1970);
+          return dateB.compareTo(dateA);
+        });
         _history = history;
         _isHistoryLoading = false;
       });
@@ -75,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _sessionId = null;
       _messages.add({
         "role": "assistant",
-        "content": "Hello! I'm your Supermarket Assistant. Ask me about product prices or deals (e.g., 'price of milk in coles').",
+        "content": "Hello! I'm DealMate. Ask me about product prices or deals (e.g., 'price of milk in coles').",
         "metadata": []
       });
     });
@@ -247,7 +289,11 @@ class _ChatScreenState extends State<ChatScreen> {
             _isLoading = false;
           });
           _scrollToBottom();
-          _loadHistory(); // Refresh history list
+          _scrollToBottom();
+          // Adding a small delay to ensure backend has processed the new session
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) _loadHistory();
+          });
         } else if (type == 'error') {
           throw Exception(event['message']);
         }
@@ -296,16 +342,18 @@ class _ChatScreenState extends State<ChatScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: Colors.black),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+          onPressed: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.black, size: 20),
-            onPressed: () {},
+            icon: const Icon(Icons.history_rounded, color: Colors.black, size: 22),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HistoryScreen()),
+            ),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: Colors.black),
@@ -400,7 +448,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 12),
                   ),
                   Text(
-                    "NiyoGen",
+                    "DealMate",
                     style: GoogleFonts.outfit(
                       color: const Color(0xFF4A6CF7), 
                       fontSize: 12, 
@@ -439,7 +487,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 15),
                 Text(
-                  "NiyoGen Chat",
+                  "DealMate Chat",
                   style: GoogleFonts.outfit(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -513,7 +561,22 @@ class _ChatScreenState extends State<ChatScreen> {
           const Divider(height: 1),
           
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+            child: ListTile(
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              ),
+              leading: const Icon(Icons.dashboard_rounded, color: Color(0xFF4A6CF7)),
+              title: Text(
+                "Go to Dashboard",
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: ListTile(
               onTap: _handleLogout,
               leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
@@ -777,7 +840,12 @@ class _ChatBubbleState extends State<_ChatBubble> {
                 ),
                 child: Text(
                   widget.content,
-                  style: GoogleFonts.outfit(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w400),
+                  style: GoogleFonts.outfit(
+                    color: Colors.white, 
+                    fontSize: 15, 
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.2
+                  ),
                 ),
               ),
             ),

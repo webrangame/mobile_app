@@ -4,11 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'chat_screen.dart';
 import 'store_items_screen.dart';
+import 'services/api_service.dart';
 import 'services/auth_service.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'widgets/custom_widgets.dart';
 import 'widgets/voice_search_overlay.dart';
+import 'history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,11 +22,39 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = 'User';
   final TextEditingController _searchController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  List<dynamic> _chatHistory = [];
+  bool _isLoadingHistory = true;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadChatHistory();
+  }
+
+  Future<void> _loadChatHistory() async {
+    try {
+      final history = await _apiService.fetchChatHistory();
+      if (mounted) {
+        setState(() {
+          // Sort by date descending (newest first)
+          history.sort((a, b) {
+            DateTime dateA = DateTime.tryParse(a['last_message_at'] ?? a['created_at'] ?? a['updated_at'] ?? '') ?? DateTime(1970);
+            DateTime dateB = DateTime.tryParse(b['last_message_at'] ?? b['created_at'] ?? b['updated_at'] ?? '') ?? DateTime(1970);
+            return dateB.compareTo(dateA);
+          });
+          _chatHistory = history.take(5).toList(); // Only show top 5 on dashboard
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+        });
+      }
+    }
   }
 
   @override
@@ -108,37 +138,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   Row(
                     children: [
-                       IconButton(
-                        icon: Icon(Icons.logout, color: isDark ? Colors.white : Colors.black),
-                        onPressed: _handleLogout,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFF8FAFF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.logout_rounded, color: isDark ? Colors.white70 : Colors.redAccent.withOpacity(0.8), size: 20),
+                          onPressed: _handleLogout,
+                        ),
                       ),
-                      Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Icon(
-                              Icons.notifications_none_rounded,
-                              color: isDark ? Colors.white : Colors.black,
-                            ),
-                          ),
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(width: 12),
                     ],
                   ),
                 ],
@@ -185,9 +195,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      color: const Color(0xFF4A6CF7).withOpacity(0.08),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
                     ),
                   ],
                 ),
@@ -296,7 +306,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 32),
+              
+              // Recent Chats Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Chats',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const HistoryScreen(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'See All',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF4A6CF7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              _isLoadingHistory
+                  ? const Center(child: CircularProgressIndicator())
+                  : _chatHistory.isEmpty
+                      ? Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No recent chats',
+                              style: GoogleFonts.outfit(
+                                color: Colors.grey.shade500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _chatHistory.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final item = _chatHistory[index];
+                            return _buildChatHistoryCard(
+                              title: item['title'] ?? 'Untitled Chat',
+                              date: _formatDate(item['last_message_at'] ?? item['created_at']),
+                              sessionId: item['session_id'],
+                              isDark: isDark,
+                            );
+                          },
+                        ),
+              
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -304,6 +385,111 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
   );
 }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Recently';
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      final now = DateTime.now();
+      
+      final today = DateTime(now.year, now.month, now.day);
+      final itemDate = DateTime(date.year, date.month, date.day);
+      final diffInDays = today.difference(itemDate).inDays;
+      
+      if (diffInDays == 0) {
+        return 'Today';
+      } else if (diffInDays == 1) {
+        return 'Yesterday';
+      } else if (diffInDays < 7) {
+        return '$diffInDays days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
+  }
+
+  Widget _buildChatHistoryCard({
+    required String title,
+    required String date,
+    required String sessionId,
+    required bool isDark,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(initialSessionId: sessionId),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F4FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: Color(0xFF4A6CF7),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF1B1B25),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    date,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildStoreCard(String name, String subtext, String logoAsset, Color accentColor, VoidCallback onTap) {
     return PremiumCard(
