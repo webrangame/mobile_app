@@ -9,6 +9,7 @@ import 'how_to_use_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'utils/user_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -154,6 +155,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TermsConditionsScreen()),
                 );
+              },
+            ),
+            _buildMenuItem(
+              icon: Icons.delete_outline_rounded,
+              title: "Delete Account",
+              onTap: () async {
+                final url = Uri.parse("https://market.niyogen.com/delete-account");
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
               },
             ),
             
