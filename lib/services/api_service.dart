@@ -120,7 +120,7 @@ class ApiService {
           'stream': false,
           'session_id': sessionId,
         }),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -169,7 +169,7 @@ class ApiService {
       });
 
       final client = http.Client();
-      final response = await client.send(request).timeout(const Duration(seconds: 30));
+      final response = await client.send(request).timeout(const Duration(seconds: 120));
 
       if (response.statusCode != 200) {
         yield {'type': 'error', 'message': 'Streaming failed: ${response.statusCode}'};
@@ -261,6 +261,32 @@ class ApiService {
     } catch (e) {
       print('ApiService Error (fetchChatMessages): $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyPriceLive(String nodeId) async {
+    try {
+      final url = '$_baseUrl/api/verify-price';
+      print('ApiService: Requesting live verification for node: $nodeId');
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'node_id': nodeId}),
+      ).timeout(const Duration(seconds: 120));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        final errorData = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(errorData['detail'] ?? 'Verification failed (${response.statusCode})');
+      }
+    } catch (e) {
+      print('ApiService Error (verifyPriceLive): $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 }

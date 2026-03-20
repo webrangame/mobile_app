@@ -153,11 +153,13 @@ class StatusTag extends StatelessWidget {
 class PremiumTable extends StatelessWidget {
   final List<String> headers;
   final List<List<String>> rows;
+  final Function(String nodeId, String productName)? onRefresh;
 
   const PremiumTable({
     super.key,
     required this.headers,
     required this.rows,
+    this.onRefresh,
   });
 
   @override
@@ -190,21 +192,89 @@ class PremiumTable extends StatelessWidget {
                 ),
               ),
             )).toList(),
-            rows: rows.map((row) => DataRow(
-              cells: row.map((cell) => DataCell(
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    cell,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: const Color(0xFF1B1B25),
-                      fontWeight: FontWeight.w500,
+            rows: rows.map((row) {
+              final String productName = row.isNotEmpty ? row[0] : 'Product';
+              
+              return DataRow(
+                cells: row.map((cell) {
+                  final bool isActionableOld = cell.contains('[Refresh]');
+                  final bool isActionableNew = cell.contains('[Refresh:');
+                  final bool isActionable = isActionableOld || isActionableNew;
+                  
+                  // Clean comments and tags for display
+                  String displayValue = cell.replaceAll(RegExp(r'<!--.*?-->'), '').trim();
+                  String? nodeIdFromTag;
+                  
+                  if (isActionableNew) {
+                    final regExp = RegExp(r'\[Refresh:([^\]]+)\]');
+                    final match = regExp.firstMatch(cell);
+                    if (match != null) {
+                      nodeIdFromTag = match.group(1)?.trim();
+                      displayValue = displayValue.replaceAll(regExp, '').trim();
+                      // Some LLMs might put brackets around it
+                      displayValue = displayValue.replaceAll('[]', '').trim();
+                    }
+                  }
+                  displayValue = displayValue.replaceAll('[Refresh]', '').trim();
+
+                  final trimmedCell = displayValue.replaceAll('**', '');
+                  final bool isLive = trimmedCell.contains('Live 🟢');
+                  final bool isDeal = trimmedCell.contains('SAVE') || 
+                                     trimmedCell.contains('WAS') || 
+                                     trimmedCell.contains('% OFF');
+                  final bool isPrice = trimmedCell.startsWith('\$') || 
+                                      (trimmedCell.isNotEmpty && RegExp(r'^\d+\.\d{2}$').hasMatch(trimmedCell));
+
+                  return DataCell(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: isActionable 
+                        ? InkWell(
+                            onTap: () {
+                              final nodeId = nodeIdFromTag ?? displayValue.split(' ').first;
+                              if (onRefresh != null) onRefresh!(nodeId, productName);
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  displayValue,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    color: const Color(0xFF1B1B25),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF4A6CF7)),
+                                Text(
+                                  "Refresh",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: const Color(0xFF4A6CF7),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : (isLive 
+                           ? StatusTag(text: trimmedCell, color: Colors.green)
+                           : (isDeal 
+                              ? StatusTag(text: trimmedCell, color: Colors.red)
+                              : Text(
+                                  trimmedCell,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    color: const Color(0xFF1B1B25),
+                                    fontWeight: isPrice ? FontWeight.bold : FontWeight.w500,
+                                  ),
+                                ))),
                     ),
-                  ),
-                ),
-              )).toList(),
-            )).toList(),
+                  );
+                }).toList(),
+              );
+            }).toList(),
           ),
         ),
       ),

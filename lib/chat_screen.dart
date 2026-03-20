@@ -678,11 +678,13 @@ class _ChatBubble extends StatefulWidget {
 class _ChatBubbleState extends State<_ChatBubble> {
   List<dynamic> _currentProducts = [];
   String _activeSort = 'Default'; // Default, Cheapest
-  String _activeFilter = 'All'; // All, Coles, Woolworths
+  String _activeFilter = 'All'; // All, Woolworths
+  late String _displayedContent;
 
   @override
   void initState() {
     super.initState();
+    _displayedContent = widget.content;
     if (widget.metadata != null) {
       _currentProducts = List.from(widget.metadata!);
     }
@@ -691,13 +693,62 @@ class _ChatBubbleState extends State<_ChatBubble> {
   @override
   void didUpdateWidget(_ChatBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.content != oldWidget.content) {
+      setState(() {
+        _displayedContent = widget.content;
+      });
+    }
     if (widget.metadata != oldWidget.metadata) {
       setState(() {
          _currentProducts = List.from(widget.metadata!);
          _activeSort = 'Default';
          _activeFilter = 'All';
       });
+      _checkInitialLivePrices();
     }
+  }
+
+  Future<void> _checkInitialLivePrices() async {
+    if (_currentProducts.isEmpty || _displayedContent.isEmpty) return;
+
+    // Wait until build completes before firing API requests
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      int successCount = 0;
+      int attemptedCount = 0;
+      final lines = _displayedContent.split('\n');
+      
+      List<Map<String, String>> refreshItems = [];
+
+      for (var line in lines) {
+        if (line.contains('|') && line.contains('[Refresh:')) {
+          final regExp = RegExp(r'\[Refresh:(.*?)\]');
+          final match = regExp.firstMatch(line);
+          if (match != null) {
+            final nodeId = match.group(1);
+            var parts = line.split('|');
+            String productName = parts.length > 1 ? parts[1].trim() : 'Product';
+            if (nodeId != null) {
+              refreshItems.add({'nodeId': nodeId, 'productName': productName});
+            }
+          }
+        }
+      }
+
+      for (var item in refreshItems) {
+        if (successCount >= 5) break; 
+
+        // Implement staggered loading: Load 3 immediately, then add delay
+        if (attemptedCount >= 3) {
+          await Future.delayed(const Duration(milliseconds: 1000));
+        }
+
+        bool success = await _refreshItem(item['nodeId']!, item['productName']!, showToast: false);
+        if (success) {
+          successCount++;
+        }
+        attemptedCount++;
+      }
+    });
   }
 
   double _parsePrice(String priceStr) {
@@ -743,6 +794,117 @@ class _ChatBubbleState extends State<_ChatBubble> {
     });
   }
 
+  Future<bool> _refreshItem(String nodeId, String productName, {bool showToast = true}) async {
+    // Show a loading snackbar or similar if needed
+    if (showToast) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              const SizedBox(width: 12),
+              Text("Verifying live price for $productName..."),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    try {
+      final apiService = ApiService();
+      final result = await apiService.verifyPriceLive(nodeId);
+      
+      if (result['status'] == 'success') {
+        final newPrice = result['price'];
+        
+        setState(() {
+          final lines = _displayedContent.split('\n');
+          List<String> headers = [];
+          
+          for (int i = 0; i < lines.length; i++) {
+            final line = lines[i];
+            if (line.contains('|')) {
+              var parts = line.split('|').map((e) => e.trim()).toList();
+              
+              if (headers.isEmpty && !line.contains('---') && parts.any((p) => p.isNotEmpty)) {
+                headers = parts.map((e) => e.toLowerCase()).toList();
+              }
+              
+              if (line.contains(nodeId)) {
+                int priceIndex = -1;
+                int statusIndex = -1;
+                
+                if (headers.isEmpty) {
+                   priceIndex = 5;
+                   statusIndex = 7;
+                } else {
+                   priceIndex = headers.indexOf('price');
+                   statusIndex = headers.indexOf('status');
+                   
+                   if (priceIndex == -1) priceIndex = 5;
+                   if (statusIndex == -1) statusIndex = 7;
+                }
+                
+                if (parts.length > priceIndex && priceIndex > 0) {
+                  parts[priceIndex] = "**$newPrice**"; 
+                }
+                if (parts.length > statusIndex && statusIndex > 0) {
+                  parts[statusIndex] = "Live 🟢";
+                }
+                
+                lines[i] = parts.map((p) => p.isEmpty ? "" : " $p ").join('|');
+              }
+            }
+          }
+          
+          _displayedContent = lines.join('\n');
+        });
+        
+        if (showToast) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Price updated successfully!"), backgroundColor: Colors.green),
+          );
+        }
+        return true;
+      } else if (result['status'] == 'not_found_removed') {
+        // Item no longer exists, remove it from the UI
+        setState(() {
+          // 1. Remove from Markdown table
+          final lines = _displayedContent.split('\n');
+          for (int i = 0; i < lines.length; i++) {
+            if (lines[i].contains(nodeId)) {
+              lines.removeAt(i);
+              break; 
+            }
+          }
+          _displayedContent = lines.join('\n');
+          
+          // 2. Remove from product carousel
+          _currentProducts.removeWhere((p) => p['node_id'] == nodeId || p['nodeId'] == nodeId);
+        });
+
+        if (showToast) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("${result['message'] ?? 'Item removed from shop.'}"),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return true; // Handled
+      }
+      return false;
+    } catch (e) {
+      if (showToast) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Refresh failed: $e"), backgroundColor: Colors.red),
+        );
+      }
+      return false;
+    }
+  }
+
   void _showStoreFilterDialog() {
     showModalBottomSheet(
       context: context,
@@ -779,6 +941,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
             _buildFilterOption('Coles', 'Coles'),
             const Divider(height: 1),
             _buildFilterOption('Woolworths', 'Woolworths'),
+            const Divider(height: 1),
+            _buildFilterOption('Aldi', 'Aldi'),
             const SizedBox(height: 24),
           ],
         ),
@@ -900,7 +1064,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _buildContentWithTables(context, widget.content),
+                    children: _buildContentWithTables(context, _displayedContent),
                   ),
                 ),
                 if (widget.metadata != null && widget.metadata!.isNotEmpty) ...[
@@ -1003,28 +1167,44 @@ class _ChatBubbleState extends State<_ChatBubble> {
       
       // Parse table lines
       if (currentTableLines.length >= 2) {
+        List<String> parseRow(String line) {
+          List<String> parts = line.split('|');
+          // Markdown tables split('|') on "| A | B |" gives ["", " A ", " B ", ""]
+          // Remove leading/trailing empty strings that result from outer pipes
+          if (parts.isNotEmpty && parts.first.trim().isEmpty) parts.removeAt(0);
+          if (parts.isNotEmpty && parts.last.trim().isEmpty) parts.removeLast();
+          return parts.map((s) => s.trim()).toList();
+        }
+
         // Line 0: Header
-        headers = currentTableLines[0]
-            .split('|')
-            .where((s) => s.trim().isNotEmpty)
-            .map((s) => s.trim())
-            .toList();
+        headers = parseRow(currentTableLines[0]);
             
         // Skip Line 1 (separator) and parse the rest
         for (int i = 2; i < currentTableLines.length; i++) {
-          final row = currentTableLines[i]
-              .split('|')
-              .where((s) => s.trim().isNotEmpty)
-              .map((s) => s.trim())
-              .toList();
-          if (row.isNotEmpty) rows.add(row);
+          List<String> row = parseRow(currentTableLines[i]);
+          
+          if (row.isNotEmpty) {
+            // Guarantee row.length == headers.length to prevent DataTable crash during streaming
+            if (row.length > headers.length) {
+              row = row.sublist(0, headers.length);
+            } else {
+              while (row.length < headers.length) {
+                row.add("");
+              }
+            }
+            rows.add(row);
+          }
         }
       }
 
       if (headers.isNotEmpty || rows.isNotEmpty) {
         widgets.add(Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: PremiumTable(headers: headers, rows: rows),
+          child: PremiumTable(
+            headers: headers, 
+            rows: rows,
+            onRefresh: _refreshItem,
+          ),
         ));
       } else {
         // If not a valid table, add as text

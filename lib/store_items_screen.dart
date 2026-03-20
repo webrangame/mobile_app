@@ -26,6 +26,8 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
+  final Set<String> _verifyingNodeIds = {};
+  final Map<String, String> _verifiedPrices = {};
 
   @override
   void initState() {
@@ -97,6 +99,45 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isMoreLoading = false);
+      }
+    }
+  }
+
+  Future<void> _verifyPrice(String nodeId, String productName) async {
+    if (_verifyingNodeIds.contains(nodeId)) return;
+
+    setState(() => _verifyingNodeIds.add(nodeId));
+
+    try {
+      final result = await _apiService.verifyPriceLive(nodeId);
+      if (result['status'] == 'success') {
+        setState(() {
+          _verifiedPrices[nodeId] = result['price'];
+          _verifyingNodeIds.remove(nodeId);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Price for $productName updated!"),
+              duration: const Duration(seconds: 1),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } else {
+        setState(() => _verifyingNodeIds.remove(nodeId));
+      }
+    } catch (e) {
+      setState(() => _verifyingNodeIds.remove(nodeId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Verification failed: $e"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -236,6 +277,12 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
     final String price = item['price'] ?? '';
     final String deal = item['deal'] ?? '';
     final String? imageUrl = item['thumbnail_url'] ?? item['image_url'];
+    final String? nodeId = item['node_id'];
+    
+    final bool isVerifying = nodeId != null && _verifyingNodeIds.contains(nodeId);
+    final String displayedPrice = (nodeId != null && _verifiedPrices.containsKey(nodeId)) 
+        ? _verifiedPrices[nodeId]! 
+        : price;
 
     return PremiumCard(
       padding: EdgeInsets.zero,
@@ -254,31 +301,75 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
           // Image Section
           Expanded(
             flex: 3,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: imageUrl != null
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.contain,
-                        cacheWidth: 300, // Optimize memory for thumbnails
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Color(0xFFBDBDBD),
-                          size: 32,
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            cacheWidth: 300, 
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Color(0xFFBDBDBD),
+                              size: 32,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.shopping_bag_outlined,
+                            color: Color(0xFFBDBDBD),
+                            size: 32,
+                          ),
+                  ),
+                ),
+                if (nodeId != null)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: GestureDetector(
+                      onTap: () => _verifyPrice(nodeId, productName),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                          border: Border.all(color: const Color(0xFF4A6CF7).withOpacity(0.1)),
                         ),
-                      )
-                    : const Icon(
-                        Icons.shopping_bag_outlined,
-                        color: Color(0xFFBDBDBD),
-                        size: 32,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            isVerifying 
+                              ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4A6CF7)))
+                              : const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF4A6CF7)),
+                            const SizedBox(width: 4),
+                            Text(
+                              isVerifying ? "Checking..." : "Get Live Price",
+                              style: GoogleFonts.outfit(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF4A6CF7),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-              ),
+                    ),
+                  ),
+              ],
             ),
           ),
           // Info Section
@@ -314,7 +405,7 @@ class _StoreItemsScreenState extends State<StoreItemsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        price,
+                        displayedPrice,
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,

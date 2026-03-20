@@ -269,41 +269,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Store Cards Row
-              Row(
-                children: [
-                   Expanded(
-                    child: _buildStoreCard(
-                      'Coles',
-                      'Super Offers',
-                      'assets/images/coles_logo.png',
-                      const Color(0xFFE01A22),
-                      () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const StoreItemsScreen(shopName: 'Coles'),
-                          ),
-                        );
-                      },
+              // Store Cards Row (Horizontal Scroll)
+              SizedBox(
+                height: 330,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    SizedBox(
+                      width: 170,
+                      child: _buildStoreCard(
+                        'Coles',
+                        'Super Offers',
+                        'assets/images/coles_logo.png',
+                        const Color(0xFFE01A22),
+                        () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const StoreItemsScreen(shopName: 'Coles'),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _buildStoreCard(
-                      'Woolworths',
-                      'Fresh Deals',
-                      'assets/images/woolworths_logo.png',
-                      const Color(0xFF008A00),
-                      () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const StoreItemsScreen(shopName: 'Woolworths'),
-                          ),
-                        );
-                      },
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 170,
+                      child: _buildStoreCard(
+                        'Woolworths',
+                        'Fresh Deals',
+                        'assets/images/woolworths_logo.png',
+                        const Color(0xFF008A00),
+                        () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const StoreItemsScreen(shopName: 'Woolworths'),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 170,
+                      child: _buildStoreCard(
+                        'Aldi',
+                        'Special Buys',
+                        'assets/images/aldi_logo.png', // Placeholder icon will be used as this asset is missing
+                        const Color(0xFF002C77),
+                        () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const StoreItemsScreen(shopName: 'Aldi'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
               const SizedBox(height: 32),
